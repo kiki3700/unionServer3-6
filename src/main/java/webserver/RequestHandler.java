@@ -9,9 +9,13 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.nio.file.Files;
+import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import model.User;
+import util.HttpRequestUtils;
 
 public class RequestHandler extends Thread {
     private static final Logger log = LoggerFactory.getLogger(RequestHandler.class);
@@ -23,6 +27,7 @@ public class RequestHandler extends Thread {
     }
 
     public void run() {
+    	HttpRequestUtils util = new HttpRequestUtils();
         log.debug("New Client Connect! Connected IP : {}, Port : {}", connection.getInetAddress(),
                 connection.getPort());
 
@@ -39,7 +44,13 @@ public class RequestHandler extends Thread {
         	String[] tokens = line.split(" ");
         	String url = new String();
         	if(tokens[0].equals("GET"))  url = tokens[1];
-        	     	
+        	if(tokens[1].contains("create?")) {
+        		int index =url.indexOf("?");
+        		String memberInfo = url .substring(index+1);
+        		url = url.substring(0,index);
+        		Map<String, String> map =util.parseQueryString(memberInfo);
+        		User user = new User(map.get("userId"),map.get("password"),map.get("name"),map.get("email"));
+        	}
         	while(!"".equals(line)) {
           		line=bf.readLine();
         	}
