@@ -9,6 +9,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.nio.file.Files;
+import java.util.HashMap;
 import java.util.Map;
 
 import org.slf4j.Logger;
@@ -16,12 +17,14 @@ import org.slf4j.LoggerFactory;
 
 import model.User;
 import util.HttpRequestUtils;
+import util.IOUtils;
 
 public class RequestHandler extends Thread {
     private static final Logger log = LoggerFactory.getLogger(RequestHandler.class);
 
     private Socket connection;
-
+    IOUtils ioUtils;
+    HttpRequestUtils httputils;
     public RequestHandler(Socket connectionSocket) {
         this.connection = connectionSocket;
     }
@@ -44,17 +47,32 @@ public class RequestHandler extends Thread {
         	String[] tokens = line.split(" ");
         	String url = new String();
         	if(tokens[0].equals("GET"))  url = tokens[1];
-        	if(tokens[1].contains("create?")) {
-        		int index =url.indexOf("?");
-        		String memberInfo = url .substring(index+1);
-        		url = url.substring(0,index);
-        		Map<String, String> map =util.parseQueryString(memberInfo);
-        		User user = new User(map.get("userId"),map.get("password"),map.get("name"),map.get("email"));
-        	}
-        	while(!"".equals(line)) {
-          		line=bf.readLine();
-        	}
+//        	if(tokens[1].contains("create?")) {
+//        		int index =url.indexOf("?");
+//        		String memberInfo = url .substring(index+1);
+//        		url = url.substring(0,index);
+//        		Map<String, String> map =util.parseQueryString(memberInfo);
+//        		User user = new User(map.get("userId"),map.get("password"),map.get("name"),map.get("email"));
+//        	}
+        	//포스트 방식 회원 가입
+        	int contentLen =0;
+        	if(tokens[0].equals("POST")) url = tokens[1];
+        	if(tokens[1].contains("create")) {
+            	while(!"".equals(line)) {
+              		line=bf.readLine();
+              		if(line.contains("Content-Length")) {
+              			String tmp = line.split(" ")[1];
+              			contentLen = Integer.parseInt(tmp);
+              			}
+              		}
+            	String info=ioUtils.readData(bf, contentLen);
+            	Map<String, String> map=httputils.parseQueryString(info);
+            	User user = new User(map.get("userId"),map.get("password"),map.get("name"),map.get("email"));            	
+            	}
+
         	
+
+        	log.debug(url);
         	
             DataOutputStream dos = new DataOutputStream(out);
             byte[] body = "Hello World".getBytes();
