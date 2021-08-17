@@ -68,22 +68,39 @@ public class RequestHandler extends Thread {
             	String info=ioUtils.readData(bf, contentLen);
             	Map<String, String> map=httputils.parseQueryString(info);
             	User user = new User(map.get("userId"),map.get("password"),map.get("name"),map.get("email"));            	
-            	}
+        	}
 
-        	
-
-        	log.debug(url);
         	
             DataOutputStream dos = new DataOutputStream(out);
             byte[] body = "Hello World".getBytes();
-            if(tokens[0].equals("GET")) body =Files.readAllBytes(new File("./webapp"+url).toPath());
-            response200Header(dos, body.length);
-            responseBody(dos, body);
+            if(tokens[0].equals("GET")) { 
+	        	body =Files.readAllBytes(new File("./webapp"+url).toPath());
+	            response200Header(dos, body.length);
+	            responseBody(dos, body);
+            }
+            if(tokens[0].equals("POST")) {
+            	body =Files.readAllBytes(new File("./webapp"+"/index.html").toPath());
+            	response302Header(dos, body.length, "/index.html");
+            	responseBody(dos, body);
+            }
+        } catch (IOException e) {
+            log.error(e.getMessage());
+        }
+
+    }
+    
+    private void response302Header(DataOutputStream dos, int lengthOfBodyContent, String location) {
+        try {
+            dos.writeBytes("HTTP/1.1 300 OK \r\n");
+            dos.writeBytes("Content-Type: text/html;charset=utf-8\r\n");
+            dos.writeBytes("Content-Length: " + lengthOfBodyContent + "\r\n");
+            dos.writeBytes("Location: " + location + "\r\n");
+            dos.writeBytes("\r\n");
         } catch (IOException e) {
             log.error(e.getMessage());
         }
     }
-
+    
     private void response200Header(DataOutputStream dos, int lengthOfBodyContent) {
         try {
             dos.writeBytes("HTTP/1.1 200 OK \r\n");
