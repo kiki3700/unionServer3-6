@@ -59,7 +59,7 @@ public class RequestHandler extends Thread {
         	//포스트 방식 회원 가입
         	int contentLen =0;
         	if(tokens[0].equals("POST")) url = tokens[1];
-        	if(tokens[1].contains("login")) {
+        	if(tokens[0].equals("POST")&&tokens[1].contains("login")) {
             	while(!"".equals(line)) {
               		line=bf.readLine();
               		if(line.contains("Content-Length")) {
@@ -73,11 +73,10 @@ public class RequestHandler extends Thread {
             	String passWord = map.get("password");
             	User user = db.findUserById(loginId);
             	if(user.getPassword().equals(passWord)) {
-            		
+            		loginFlag = true;
             	}
-            	
         	}
-        	
+        	//signup
         	if(tokens[1].contains("create")) {
             	while(!"".equals(line)) {
               		line=bf.readLine();
@@ -99,11 +98,15 @@ public class RequestHandler extends Thread {
 	        	body =Files.readAllBytes(new File("./webapp"+url).toPath());
 	            response200Header(dos, body.length);
 	            responseBody(dos, body);
-            }
-            if(tokens[0].equals("POST")) {
+            }else if(tokens[0].equals("POST") && tokens[1].contains("create")) {
             	body =Files.readAllBytes(new File("./webapp"+"/index.html").toPath());
             	response302Header(dos, body.length, "/index.html");
             	responseBody(dos, body);
+            }else {
+            	log.info("trying to login");
+            	body =Files.readAllBytes(new File("./webapp"+"/index.html").toPath());
+	            response302Header(dos, body.length, "/index.html", loginFlag);
+	            responseBody(dos, body);
             }
         } catch (IOException e) {
             log.error(e.getMessage());
@@ -113,10 +116,24 @@ public class RequestHandler extends Thread {
     
     private void response302Header(DataOutputStream dos, int lengthOfBodyContent, String location) {
         try {
-            dos.writeBytes("HTTP/1.1 300 OK \r\n");
+            dos.writeBytes("HTTP/1.1 302 OK \r\n");
             dos.writeBytes("Content-Type: text/html;charset=utf-8\r\n");
             dos.writeBytes("Content-Length: " + lengthOfBodyContent + "\r\n");
             dos.writeBytes("Location: " + location + "\r\n");
+            dos.writeBytes("\r\n");
+        } catch (IOException e) {
+            log.error(e.getMessage());
+        }
+    }
+    
+    private void response302Header(DataOutputStream dos, int lengthOfBodyContent, String location, boolean loginFlag) {
+        try {
+            dos.writeBytes("HTTP/1.1 302 OK \r\n");
+            dos.writeBytes("Content-Type: text/html;charset=utf-8\r\n");
+            dos.writeBytes("Content-Length: " + lengthOfBodyContent + "\r\n");
+            dos.writeBytes("Location: " + location + "\r\n");
+            if(loginFlag) dos.writeBytes("Set-Cookie: logined=true \r\n");
+            if(!loginFlag) dos.writeBytes("Set-Cookie: logined=flase \r\n");
             dos.writeBytes("\r\n");
         } catch (IOException e) {
             log.error(e.getMessage());
@@ -142,4 +159,5 @@ public class RequestHandler extends Thread {
             log.error(e.getMessage());
         }
     }
+
 }
