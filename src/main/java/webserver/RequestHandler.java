@@ -15,14 +15,16 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import db.DataBase;
 import model.User;
 import util.HttpRequestUtils;
 import util.IOUtils;
 
 public class RequestHandler extends Thread {
     private static final Logger log = LoggerFactory.getLogger(RequestHandler.class);
-
+    static DataBase db = new DataBase();
     private Socket connection;
+    static boolean loginFlag;
     IOUtils ioUtils;
     HttpRequestUtils httputils;
     public RequestHandler(Socket connectionSocket) {
@@ -42,10 +44,10 @@ public class RequestHandler extends Thread {
         	
         	// 예외 처리
         	if(line == null) return;
-        	
         	//요청 분석
         	String[] tokens = line.split(" ");
         	String url = new String();
+        	log.info("url : "+url);
         	if(tokens[0].equals("GET"))  url = tokens[1];
 //        	if(tokens[1].contains("create?")) {
 //        		int index =url.indexOf("?");
@@ -57,6 +59,25 @@ public class RequestHandler extends Thread {
         	//포스트 방식 회원 가입
         	int contentLen =0;
         	if(tokens[0].equals("POST")) url = tokens[1];
+        	if(tokens[1].contains("login")) {
+            	while(!"".equals(line)) {
+              		line=bf.readLine();
+              		if(line.contains("Content-Length")) {
+              			String tmp = line.split(" ")[1];
+              			contentLen = Integer.parseInt(tmp);
+              			}
+              		}
+            	String info=ioUtils.readData(bf, contentLen);
+            	Map<String, String> map=httputils.parseQueryString(info);
+            	String loginId = map.get("userId");
+            	String passWord = map.get("password");
+            	User user = db.findUserById(loginId);
+            	if(user.getPassword().equals(passWord)) {
+            		
+            	}
+            	
+        	}
+        	
         	if(tokens[1].contains("create")) {
             	while(!"".equals(line)) {
               		line=bf.readLine();
@@ -67,7 +88,8 @@ public class RequestHandler extends Thread {
               		}
             	String info=ioUtils.readData(bf, contentLen);
             	Map<String, String> map=httputils.parseQueryString(info);
-            	User user = new User(map.get("userId"),map.get("password"),map.get("name"),map.get("email"));            	
+            	User user = new User(map.get("userId"),map.get("password"),map.get("name"),map.get("email")); 
+            	db.addUser(user);
         	}
 
         	
