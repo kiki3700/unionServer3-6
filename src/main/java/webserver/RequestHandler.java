@@ -48,26 +48,29 @@ public class RequestHandler extends Thread {
         	String[] tokens = line.split(" ");
         	String url = new String();
         	log.info("url : "+url);
+        	//get url 
+        	String info = new String();
         	if(tokens[0].equals("GET"))  url = tokens[1];
-//        	if(tokens[1].contains("create?")) {
-//        		int index =url.indexOf("?");
-//        		String memberInfo = url .substring(index+1);
-//        		url = url.substring(0,index);
-//        		Map<String, String> map =util.parseQueryString(memberInfo);
-//        		User user = new User(map.get("userId"),map.get("password"),map.get("name"),map.get("email"));
-//        	}
-        	//포스트 방식 회원 가입
-        	int contentLen =0;
-        	if(tokens[0].equals("POST")) url = tokens[1];
+        	if(tokens[0].equals("POST")) {
+        		url = tokens[1];
+        		int contentLen =0;
+	        	while(!"".equals(line)) {
+	          		line=bf.readLine();
+	          		if(line.contains("Content-Length")) {
+	          			String tmp = line.split(" ")[1];
+	          			contentLen = Integer.parseInt(tmp);
+	          			}
+	          		if(line.contains("Cookie")) {
+	          			String cookie =line.split(" ")[1];
+	          			log.debug("hello cookie"+ cookie);
+	          			Map logined = HttpRequestUtils.parseCookies(cookie);
+	          		}
+	          		}
+            	info=ioUtils.readData(bf, contentLen);
+        	}
+
+        	//login
         	if(tokens[0].equals("POST")&&tokens[1].contains("login")) {
-            	while(!"".equals(line)) {
-              		line=bf.readLine();
-              		if(line.contains("Content-Length")) {
-              			String tmp = line.split(" ")[1];
-              			contentLen = Integer.parseInt(tmp);
-              			}
-              		}
-            	String info=ioUtils.readData(bf, contentLen);
             	Map<String, String> map=httputils.parseQueryString(info);
             	String loginId = map.get("userId");
             	String passWord = map.get("password");
@@ -78,14 +81,6 @@ public class RequestHandler extends Thread {
         	}
         	//signup
         	if(tokens[1].contains("create")) {
-            	while(!"".equals(line)) {
-              		line=bf.readLine();
-              		if(line.contains("Content-Length")) {
-              			String tmp = line.split(" ")[1];
-              			contentLen = Integer.parseInt(tmp);
-              			}
-              		}
-            	String info=ioUtils.readData(bf, contentLen);
             	Map<String, String> map=httputils.parseQueryString(info);
             	User user = new User(map.get("userId"),map.get("password"),map.get("name"),map.get("email")); 
             	db.addUser(user);
