@@ -25,6 +25,7 @@ public class RequestHandler extends Thread {
     static DataBase db = new DataBase();
     private Socket connection;
     static boolean loginFlag;
+    static boolean logedin;
     IOUtils ioUtils;
     HttpRequestUtils httputils;
     public RequestHandler(Socket connectionSocket) {
@@ -47,13 +48,14 @@ public class RequestHandler extends Thread {
         	//요청 분석
         	String[] tokens = line.split(" ");
         	String url = new String();
-        	log.info("url : "+url);
+
         	//get url 
         	String info = new String();
-        	if(tokens[0].equals("GET"))  url = tokens[1];
-        	if(tokens[0].equals("POST")) {
+        	//url 분석
         		url = tokens[1];
+            	log.info("url : "+url);
         		int contentLen =0;
+        		//http header analy
 	        	while(!"".equals(line)) {
 	          		line=bf.readLine();
 	          		if(line.contains("Content-Length")) {
@@ -63,11 +65,13 @@ public class RequestHandler extends Thread {
 	          		if(line.contains("Cookie")) {
 	          			String cookie =line.split(" ")[1];
 	          			log.debug("hello cookie"+ cookie);
-	          			Map logined = HttpRequestUtils.parseCookies(cookie);
-	          		}
+	          			Map<String, String> cookieMap = HttpRequestUtils.parseCookies(cookie);
+	          			logedin = Boolean.parseBoolean(cookieMap.get("logined"));
+	          			log.debug("logined ?"+ logedin);
+	          			}
 	          		}
             	info=ioUtils.readData(bf, contentLen);
-        	}
+        
 
         	//login
         	if(tokens[0].equals("POST")&&tokens[1].contains("login")) {
@@ -89,19 +93,31 @@ public class RequestHandler extends Thread {
         	
             DataOutputStream dos = new DataOutputStream(out);
             byte[] body = "Hello World".getBytes();
-            if(tokens[0].equals("GET")) { 
-	        	body =Files.readAllBytes(new File("./webapp"+url).toPath());
-	            response200Header(dos, body.length);
-	            responseBody(dos, body);
-            }else if(tokens[0].equals("POST") && tokens[1].contains("create")) {
+            if(tokens[0].equals("POST") && tokens[1].contains("create")) {
             	body =Files.readAllBytes(new File("./webapp"+"/index.html").toPath());
             	response302Header(dos, body.length, "/index.html");
             	responseBody(dos, body);
-            }else {
+            }else if(tokens[0].equals("POST")&&tokens[1].contains("login")){
             	log.info("trying to login");
             	body =Files.readAllBytes(new File("./webapp"+"/index.html").toPath());
 	            response302Header(dos, body.length, "/index.html", loginFlag);
 	            responseBody(dos, body);
+            }else if(tokens[1].contains("user/list")) {
+            	if(logedin) {
+            		body =Files.readAllBytes(new File("./webapp"+url).toPath());
+            	}else {
+            		body =Files.readAllBytes(new File("./webapp/user/login.html").toPath());
+            	}
+        		response200Header(dos, body.length);
+        		responseBody(dos, body);
+            }else if(tokens[1].contains("css")) {
+            	body =Files.readAllBytes(new File("./webapp"+url).toPath());
+        		responseCss200Header(dos, body.length);
+        		responseBody(dos, body);
+            }else {
+            	body =Files.readAllBytes(new File("./webapp"+url).toPath());
+        		response200Header(dos, body.length);
+        		responseBody(dos, body);
             }
         } catch (IOException e) {
             log.error(e.getMessage());
@@ -139,6 +155,16 @@ public class RequestHandler extends Thread {
         try {
             dos.writeBytes("HTTP/1.1 200 OK \r\n");
             dos.writeBytes("Content-Type: text/html;charset=utf-8\r\n");
+            dos.writeBytes("Content-Length: " + lengthOfBodyContent + "\r\n");
+            dos.writeBytes("\r\n");
+        } catch (IOException e) {
+            log.error(e.getMessage());
+        }
+    }
+    private void responseCss200Header(DataOutputStream dos, int lengthOfBodyContent) {
+        try {
+            dos.writeBytes("HTTP/1.1 200 OK \r\n");
+            dos.writeBytes("Content-Type: text/css;charset=utf-8\r\n");
             dos.writeBytes("Content-Length: " + lengthOfBodyContent + "\r\n");
             dos.writeBytes("\r\n");
         } catch (IOException e) {
