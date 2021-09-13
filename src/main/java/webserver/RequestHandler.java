@@ -47,42 +47,51 @@ public class RequestHandler extends Thread {
         	//요청 분석
         	String[] tokens = line.split(" ");
         	String url = new String();
-        	log.info("url : "+url);
         	//get url 
         	String info = new String();
-        	if(tokens[0].equals("GET"))  url = tokens[1];
+        	if(tokens[0].equals("GET")) {
+        		url = tokens[1];
+        		log.info("GET url : "+url);
+        	}
         	if(tokens[0].equals("POST")) {
         		url = tokens[1];
+        		log.info("POST url : "+url);
         		int contentLen =0;
 	        	while(!"".equals(line)) {
 	          		line=bf.readLine();
 	          		if(line.contains("Content-Length")) {
 	          			String tmp = line.split(" ")[1];
 	          			contentLen = Integer.parseInt(tmp);
+	          			log.info("cont-len : "+contentLen);
 	          			}
 	          		if(line.contains("Cookie")) {
 	          			String cookie =line.split(" ")[1];
-	          			log.debug("hello cookie"+ cookie);
+	          			log.debug("cookie : "+ cookie);
 	          			Map logined = HttpRequestUtils.parseCookies(cookie);
-	          		}
+	          			}
 	          		}
             	info=ioUtils.readData(bf, contentLen);
         	}
-
+        	
+        	
+        	//analysis request
         	//login
         	if(tokens[0].equals("POST")&&tokens[1].contains("login")) {
             	Map<String, String> map=httputils.parseQueryString(info);
             	String loginId = map.get("userId");
             	String passWord = map.get("password");
             	User user = db.findUserById(loginId);
+            	log.info(loginId+ "is trying to login");
             	if(user.getPassword().equals(passWord)) {
             		loginFlag = true;
+            		log.info("login success");
             	}
         	}
         	//signup
         	if(tokens[1].contains("create")) {
             	Map<String, String> map=httputils.parseQueryString(info);
-            	User user = new User(map.get("userId"),map.get("password"),map.get("name"),map.get("email")); 
+            	User user = new User(map.get("userId"),map.get("password"),map.get("name"),map.get("email"));
+            	log.info(map.get("userId")+" is trying to sign up.");
             	db.addUser(user);
         	}
 
@@ -90,15 +99,17 @@ public class RequestHandler extends Thread {
             DataOutputStream dos = new DataOutputStream(out);
             byte[] body = "Hello World".getBytes();
             if(tokens[0].equals("GET")) { 
+            	log.info("GET : to "+url);
 	        	body =Files.readAllBytes(new File("./webapp"+url).toPath());
-	            response200Header(dos, body.length);
+	            response200Header(dos, body.length, url);
 	            responseBody(dos, body);
             }else if(tokens[0].equals("POST") && tokens[1].contains("create")) {
+            	log.info("post : to index.html");
             	body =Files.readAllBytes(new File("./webapp"+"/index.html").toPath());
             	response302Header(dos, body.length, "/index.html");
             	responseBody(dos, body);
             }else {
-            	log.info("trying to login");
+            	log.info("post : to index.html");
             	body =Files.readAllBytes(new File("./webapp"+"/index.html").toPath());
 	            response302Header(dos, body.length, "/index.html", loginFlag);
 	            responseBody(dos, body);
@@ -135,10 +146,11 @@ public class RequestHandler extends Thread {
         }
     }
     
-    private void response200Header(DataOutputStream dos, int lengthOfBodyContent) {
+    private void response200Header(DataOutputStream dos, int lengthOfBodyContent, String url) {
         try {
             dos.writeBytes("HTTP/1.1 200 OK \r\n");
-            dos.writeBytes("Content-Type: text/html;charset=utf-8\r\n");
+            if(!url.contains("css")) dos.writeBytes("Content-Type: text/html;charset=utf-8\r\n");
+            if(url.contains("css")) dos.writeBytes("Content-Type: text/css;charset=utf-8\r\n");
             dos.writeBytes("Content-Length: " + lengthOfBodyContent + "\r\n");
             dos.writeBytes("\r\n");
         } catch (IOException e) {
