@@ -67,7 +67,13 @@ public class RequestHandler extends Thread {
 	          			log.info("cont-len : "+contentLen);
 	          			}
 	          		if(line.contains("Cookie")) {
-	          			String cookie =line.split(" ")[1];
+	          			String[] cookies =line.split("; ");
+	          			String cookie = new String();
+	          			for(int i = 0; i < cookie.length();i++) {
+	          				if(cookies[i].contains("login")) {
+	          					cookie = cookies[i];
+	          				}
+	          			}
 	          			log.debug("cookie : "+ cookie);
 	          			Map logined = HttpRequestUtils.parseCookies(cookie);
 	          			}
@@ -100,15 +106,22 @@ public class RequestHandler extends Thread {
         	
             DataOutputStream dos = new DataOutputStream(out);
             byte[] body = "Hello World".getBytes();
-            if(tokens[0].equals("GET")) { 
-            	log.info("GET : to "+url);
-	        	body =Files.readAllBytes(new File("./webapp"+url).toPath());
-	            response200Header(dos, body.length, url);
-	            responseBody(dos, body);
-            }else if(tokens[0].equals("POST") && tokens[1].contains("create")) {
+//            if(tokens[0].equals("GET")) { 
+//            	log.info("GET : to "+url);
+//	        	body =Files.readAllBytes(new File("./webapp"+url).toPath());
+//	            response200Header(dos, body.length, url);
+//	            responseBody(dos, body);
+//            }else 
+            	
+        	if(tokens[0].equals("POST") && tokens[1].contains("create")) {
             	log.info("post : to index.html");
             	body =Files.readAllBytes(new File("./webapp"+"/index.html").toPath());
             	response302Header(dos, body.length, "/index.html");
+            	responseBody(dos, body);
+            }else if(tokens[0].equals("POST")&&tokens[1].contains("login")) {
+            	log.info("post : to index.html");
+            	body =Files.readAllBytes(new File("./webapp"+"/index.html").toPath());
+            	response302Header(dos, body.length, "/index.html", loginFlag );
             	responseBody(dos, body);
             }else if(tokens[1].contains("user/list")) {
             	if(logedin) {
@@ -151,6 +164,7 @@ public class RequestHandler extends Thread {
             dos.writeBytes("Content-Type: text/html;charset=utf-8\r\n");
             dos.writeBytes("Content-Length: " + lengthOfBodyContent + "\r\n");
             dos.writeBytes("Location: " + location + "\r\n");
+            log.info("login : "+ loginFlag+ " cookie set==>");
             if(loginFlag) dos.writeBytes("Set-Cookie: logined=true \r\n");
             if(!loginFlag) dos.writeBytes("Set-Cookie: logined=flase \r\n");
             dos.writeBytes("\r\n");
