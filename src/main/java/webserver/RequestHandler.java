@@ -9,6 +9,8 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.nio.file.Files;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -26,6 +28,7 @@ public class RequestHandler extends Thread {
     private Socket connection;
     static boolean loginFlag;
     static boolean logedin;
+    static boolean logging;
     IOUtils ioUtils;
     HttpRequestUtils httputils;
     public RequestHandler(Socket connectionSocket) {
@@ -67,15 +70,15 @@ public class RequestHandler extends Thread {
 	          			log.info("cont-len : "+contentLen);
 	          			}
 	          		if(line.contains("Cookie")) {
-	          			String[] cookies =line.split("; ");
-	          			String cookie = new String();
-	          			for(int i = 0; i < cookie.length();i++) {
-	          				if(cookies[i].contains("login")) {
-	          					cookie = cookies[i];
-	          				}
+	          			log.info("cookie line : "+line);
+	          			String[] contents = line.split(":");
+	          			Map<String, String> cookies = HttpRequestUtils.parseCookies(contents[1]);
+	          			String value = cookies.get("logined");
+	          			if(value == null) {
+	          				logging = false;
 	          			}
-	          			log.debug("cookie : "+ cookie);
-	          			Map logined = HttpRequestUtils.parseCookies(cookie);
+	          			logging = Boolean.parseBoolean(value);
+	          			
 	          			}
 	          		}
             	info=ioUtils.readData(bf, contentLen);
@@ -103,7 +106,6 @@ public class RequestHandler extends Thread {
             	db.addUser(user);
         	}
 
-        	
             DataOutputStream dos = new DataOutputStream(out);
             byte[] body = "Hello World".getBytes();
 //            if(tokens[0].equals("GET")) { 
@@ -124,10 +126,24 @@ public class RequestHandler extends Thread {
             	response302Header(dos, body.length, "/index.html", loginFlag );
             	responseBody(dos, body);
             }else if(tokens[1].contains("user/list")) {
-            	if(logedin) {
+            	if(!logging) {
             		body =Files.readAllBytes(new File("./webapp"+url).toPath());
             	}else {
-            		body =Files.readAllBytes(new File("./webapp/user/login.html").toPath());
+        			Collection<User> users = DataBase.findAll();
+        			StringBuilder sb = new StringBuilder();
+        			sb.append("<table border = '1'>");
+        			for(User user: users) {
+        				sb.append("<tr>");
+        				sb.append("<td>"+user.getUserId()+"</td>");
+        				sb.append("<td>"+user.getName()+"</td>");
+        				sb.append("<td>"+user.getEmail()+"</td>");
+        				sb.append("</tr>");
+        			}
+        			sb.append("</table>");
+        			body = sb.toString().getBytes();
+            		dos = new DataOutputStream(out);
+            		response200Header(dos, body.length, url);
+            		responseBody(dos, body);
             	}
         		response200Header(dos, body.length, url);
         		responseBody(dos, body);
@@ -140,7 +156,7 @@ public class RequestHandler extends Thread {
         		response200Header(dos, body.length, url);
         		responseBody(dos, body);
             }
-        } catch (IOException e) {
+         } catch (IOException e) {
             log.error(e.getMessage());
         }
 
